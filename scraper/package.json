@@ -1,0 +1,17 @@
+{
+  "name": "data-job-match-scraper",
+  "version": "1.0.0",
+  "description": "Scraper programado para buscar empleos de Analista de Datos",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase": "^10.10.0",
+    "puppeteer": "^22.6.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
