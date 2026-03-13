@@ -4,10 +4,16 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import dotenv from "dotenv";
 
-// Cargar variables de entorno locales (el path puede variar dependiendo desde donde se ejecute el script)
-dotenv.config({ path: "../.env.local" }); 
-// Por si se ejecuta en la misma raiz:
-dotenv.config();
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Configurar rutas absolutas para módulos ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '..', '.env.local');
+
+// Cargar variables de entorno desde el archivo .env.local en la raíz
+dotenv.config({ path: envPath });
 
 // Configuración Firebase (usando las mismas vars del cliente Next.js)
 const firebaseConfig = {
