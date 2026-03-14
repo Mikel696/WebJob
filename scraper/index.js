@@ -60,75 +60,80 @@ async function scrapeDataAnalystJobs() {
 
   const offers = [];
 
-  try {
-    // === EJEMPLO 1: Computrabajo Colombia ===
-    console.log("📍 Accediendo a Computrabajo...");
-    const searchUrl = "https://co.computrabajo.com/trabajo-de-analista-de-datos";
-    
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await randomDelay(3000, 6000); // Esperar a que renderice
+  /**
+   * Helper function to scrape a specific URL and category
+   */
+  async function scrapeComputrabajoCategory(url, category, extraSearchTerms = []) {
+    console.log(`📍 Accediendo a Computrabajo para categoría: ${category}...`);
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await randomDelay(3000, 6000); // Esperar a que renderice
 
-    // Extraer datos básicos
-    const jobCards = await page.$$("article.box_offer"); // Selector de Computrabajo (puede cambiar en el futuro)
-    
-    console.log(`Encontradas ${jobCards.length} ofertas en la primera página.`);
+      const jobCards = await page.$$("article.box_offer");
+      console.log(`Encontradas ${jobCards.length} ofertas para ${category}.`);
 
-    for (const card of jobCards) {
-      try {
-        const titleEl = await card.$('h1 a, h2 a');
-        const companyEl = await card.$('p.fs16');
-        const locationEl = await card.$('p.fs13');
-        const descEl = await card.$('p.fc_base');
-        const urlEl = await card.$('h1 a, h2 a');
+      for (const card of jobCards) {
+        try {
+          const titleEl = await card.$('h1 a, h2 a');
+          const companyEl = await card.$('p.fs16');
+          const locationEl = await card.$('p.fs13');
+          const descEl = await card.$('p.fc_base');
+          const urlEl = await card.$('h1 a, h2 a');
 
-        const title = titleEl ? await page.evaluate(el => el.textContent.trim(), titleEl) : "Sin título";
-        const company = companyEl ? await page.evaluate(el => el.textContent.trim(), companyEl) : "Empresa Confidencial";
-        const locationText = locationEl ? await page.evaluate(el => el.textContent.trim(), locationEl) : "Colombia";
-        const description = descEl ? await page.evaluate(el => el.textContent.trim(), descEl) : "";
-        const partialUrl = urlEl ? await page.evaluate(el => el.getAttribute('href'), urlEl) : "";
-        const fullUrl = partialUrl ? (partialUrl.startsWith("http") ? partialUrl : `https://co.computrabajo.com${partialUrl}`) : searchUrl;
+          const title = titleEl ? await page.evaluate(el => el.textContent.trim(), titleEl) : "Sin título";
+          const company = companyEl ? await page.evaluate(el => el.textContent.trim(), companyEl) : "Empresa Confidencial";
+          const locationText = locationEl ? await page.evaluate(el => el.textContent.trim(), locationEl) : "Colombia";
+          const description = descEl ? await page.evaluate(el => el.textContent.trim(), descEl) : "";
+          const partialUrl = urlEl ? await page.evaluate(el => el.getAttribute('href'), urlEl) : "";
+          const fullUrl = partialUrl ? (partialUrl.startsWith("http") ? partialUrl : `https://co.computrabajo.com${partialUrl}`) : url;
 
-        // Determinar si es remoto leyendo el título o la descripción
-        const isRemote = title.toLowerCase().includes("remoto") || description.toLowerCase().includes("remoto") || locationText.toLowerCase().includes("remoto");
+          const isRemote = title.toLowerCase().includes("remoto") || description.toLowerCase().includes("remoto") || locationText.toLowerCase().includes("remoto");
 
-        if (title !== "Sin título") {
-          offers.push({
-            title,
-            company,
-            location: locationText,
-            description,
-            url: fullUrl,
-            isRemote,
-            source: "Computrabajo",
-            scrapedAt: new Date()
-          });
+          // Si es de ingreso inmediato, forzamos que sea remoto para que encaje mejor si las keywords lo sugieren (Computrabajo agrupa remoto)
+          const isValidRemoteImmediate = category === 'remote_immediate' ? isRemote : true;
+
+          if (title !== "Sin título" && isValidRemoteImmediate) {
+            offers.push({
+              title,
+              company,
+              location: locationText,
+              description,
+              url: fullUrl,
+              isRemote,
+              category, // 'data_analyst' o 'remote_immediate'
+              source: "Computrabajo",
+              scrapedAt: new Date()
+            });
+          }
+          await randomDelay(200, 500);
+        } catch (innerError) {
+          console.warn("⚠️ Advertencia: No se pudo extraer una tarjeta específica.", innerError.message);
         }
-        await randomDelay(200, 500); // Pequeño delay por cada tarjeta
-      } catch (innerError) {
-        console.warn("⚠️ Advertencia: No se pudo extraer una tarjeta específica. Saltando a la siguiente.", innerError.message);
       }
+    } catch (error) {
+       console.error(`❌ Error accediendo a categoría ${category}:`, error.message);
     }
-  } catch (error) {
-    console.error("❌ Error accediendo al portal 1:", error.message);
-    // El script NO se rompe, así puede intentar con otros portales a continuación
   }
+
+  // 1. Scraping para Analistas de Datos
+  await scrapeComputrabajoCategory(
+    "https://co.computrabajo.com/trabajo-de-analista-de-datos", 
+    "data_analyst"
+  );
+
+  // 2. Scraping para Ingreso Inmediato Remoto (Asistente virtual, Soporte, Data Entry)
+  // Nota: Computrabajo tiene filtros 'modalidad=1' para remoto, buscamos términos generales
+  await scrapeComputrabajoCategory(
+    "https://co.computrabajo.com/trabajo-de-remoto-ingreso-inmediato", 
+    "remote_immediate"
+  );
+  await scrapeComputrabajoCategory(
+    "https://co.computrabajo.com/trabajo-de-digitador-remoto", 
+    "remote_immediate"
+  );
 
   // === EJEMPLO 2: Dummy / Otros Portales ===
   // Aquí puedes replicar el bloque try-catch anterior para "El Empleo", LinkedIn, etc.
-  console.log("📍 Intentando portal alternativo (Generación de dummys para demostración)...");
-  offers.push({
-    title: "Senior Data Analyst (100% Remoto)",
-    company: "TechGlobal Solutions",
-    location: "Remoto - LATAM",
-    description: "Buscamos Analista de Datos senior con experiencia en Python, SQL avanzado y Power BI. Excelente salario en USD. Proceso rápido de 2 etapas.",
-    url: "https://www.linkedin.com/jobs",
-    isRemote: true,
-    source: "LinkedIn",
-    scrapedAt: new Date()
-  });
-
-  // Guardado en Firebase
-  console.log(`💾 Guardando ${offers.length} ofertas en Firestore...`);
   const offersRef = collection(db, "offers");
 
   let savedCount = 0;

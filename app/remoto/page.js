@@ -16,10 +16,10 @@ export default function RemotoPage() {
   useEffect(() => {
     async function fetchOffers() {
       try {
-        // Filtrar query inicial por trabajos remotos
+        // Filtrar query inicial por trabajos remotos de la categoría específica
         const q = query(
           collection(db, "offers"),
-          where("isRemote", "==", true),
+          where("category", "==", "remote_immediate"),
           orderBy("scrapedAt", "desc"),
           limit(50)
         );
